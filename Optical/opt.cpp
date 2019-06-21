@@ -111,6 +111,7 @@ void init_data() {
     for (i=0;i<numLines;i++) {
         for (j=0;j<3*numEnergies;j++) {
             fscanf(dataFile, "%lf", &dipole_list[i][j]);
+            //printf("%f\n",dipole_list[i][j]);
         }
     }
 
@@ -186,7 +187,7 @@ int main(int argc, char **argv) {
     opt op(LN_SBPLX,3);
     op.set_min_objective(calc_fitness,NULL);
     op.set_xtol_rel(1e-4);
-    params.push_back(-6.0);
+    params.push_back(3.0);
     params.push_back(1.0);
     params.push_back(1.0);
 
@@ -194,7 +195,7 @@ int main(int argc, char **argv) {
     lb.push_back(-10.0);
     lb.push_back(-10.0);
 
-    ub.push_back(1.0);
+    ub.push_back(10.0);
     ub.push_back(10.0);
     ub.push_back(10.0);
     op.set_lower_bounds(lb);
@@ -206,7 +207,7 @@ int main(int argc, char **argv) {
     B = params[2];
 
     FILE *param_output = fopen("fitted_TB_params.dat","w");
-    fprintf(param_output,"%f\n%f\t%f\n%f\n",fit,epsilon,A,B);
+    fprintf(param_output,"%f\n%f\n%f\t%f\n",fit,epsilon,A,B);
     fclose(param_output);
     print_comparison();
 
