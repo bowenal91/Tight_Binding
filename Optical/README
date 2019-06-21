@@ -1,0 +1,3 @@
+To compile the c++ code, you need the nlopt optimization library and the Eigen linear algebra library. 
+
+To run the code on the electronic structure csv files, do "./run <filename> <output_filename>". The output from the calculation will be an XY file containing in each row the energy level calculated from quantum chemistry techniques and the energy level from the model Hamiltonian.
