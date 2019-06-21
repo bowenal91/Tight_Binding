@@ -14,12 +14,12 @@ using namespace std;
 using namespace Eigen;
 using namespace nlopt;
 
-double epsilon_g, A, B; //Epsilon is potential energy, and J is coupling between adjacent sites; g is ground state, and e is excited state
-int numLines, numDihedrals, numEnergies, numJunk;
+double epsilon, A, B; //Epsilon is potential energy, and J is coupling between adjacent sites; g is ground state, and e is excited state
+int numLines, numDihedrals, numEnergies, numJunk, engFileWidth;
 std::vector<double> params;
 std::vector<double> lb;
 std::vector<double> ub;
-double **dihedral_list, **energy_list;
+double **dihedral_list, **energy_list, **dipole_list;
 FILE *dataFile;
 char *dihedral_file_name, *energy_file_name, *output_name, *Osc_file_name, *Dipole_file_name;
 MatrixXd Hamiltonian;
@@ -47,21 +47,18 @@ void diagonalize() {
 
 double calc_fitness(const std::vector<double> &c, std::vector<double> &grad, void *data) {
     int i,j,j2;
-    epsilon_g = c[0];
-    epsilon_e = c[1];
-    J_g = c[2];
-    J_e = c[3];
+    epsilon = c[0];
+    A = c[1];
+    B = c[2];
     double EV, ref;
     double fit = 0.0;
     for (i=0;i<numLines;i++) {
         set_Hamiltonian(i);
         diagonalize();
-        j2 = 0;
-        for (j=numEnergies-3;j<numEnergies+3;j++) {
+        for (j=0;j<engFileWidth;j++) {
             EV = Eigenvalues(j,j);
-            ref = energy_list[i][j2];
+            ref = energy_list[i][j];
             fit += (EV-ref)*(EV-ref);
-            j2++;
         }
 
     }
@@ -82,9 +79,11 @@ void init_data() {
     aFile.close(); 
     dihedral_list = new double *[numLines];
     energy_list = new double *[numLines];
+    dipole_list = new double *[numLines];
     for (i=0;i<numLines;i++) {
         dihedral_list[i] = new double [2*numDihedrals];
-        energy_list[i] = new double [6];
+        energy_list[i] = new double [engFileWidth];
+        dipole_list[i] = new double [3*numEnergies];
     }
 
     char tt[2001];
@@ -101,13 +100,21 @@ void init_data() {
     dataFile = fopen(energy_file_name,"r");
     
     for (i=0;i<numLines;i++) {
-        for (j=0;j<6;j++) {
+        for (j=0;j<engFileWidth;j++) {
             fscanf(dataFile, "%lf", &energy_list[i][j]);
         }   
     }
 
     fclose(dataFile);
 
+    dataFile = fopen(Dipole_file_name,"r");
+    for (i=0;i<numLines;i++) {
+        for (j=0;j<3*numEnergies;j++) {
+            fscanf(dataFile, "%lf", &dipole_list[i][j]);
+        }
+    }
+
+    fclose(dataFile);
 
 }
 
@@ -119,39 +126,39 @@ void init_matrix() {
 
 
 void print_comparison() {
-    int i,j,j2;
+    int i,j,j2,k;
     double EV,ref;
-    double h1,h2,l1,l2;
+    double ux,uy,uz,u2,psi;
     FILE *output = fopen(output_name,"w");
-    FILE *output2 = fopen(HOMO_file_name,"w");
-    FILE *output3 = fopen(LUMO_file_name,"w");
+    FILE *output2 = fopen(Osc_file_name,"w");
     for (i=0;i<numLines;i++) {
         set_Hamiltonian(i);
         diagonalize();
-        for (j=numEnergies-3;j<numEnergies+3;j++) {
+        for (j=0;j<engFileWidth;j++) {
             EV = Eigenvalues(j,j);
             
             fprintf(output, "%f\t",EV);
 
         }
         fprintf(output,"\n");
-        for (j=0;j<numEnergies;j++) {
-            h1 = Eigenvectors(j,numEnergies-1);
-            h2 = Eigenvectors(j+numEnergies,numEnergies-1);
-            l1 = Eigenvectors(j,numEnergies);
-            l2 = Eigenvectors(j+numEnergies,numEnergies);
+        for (j=0;j<engFileWidth;j++) {
+            ux = 0.0; uy = 0.0; uz = 0.0;
+            for (k=0;k<numEnergies;k++) {
+                psi = Eigenvectors(k,j);
+                ux += psi*psi*dipole_list[i][3*k];
+                uy += psi*psi*dipole_list[i][3*k+1];
+                uz += psi*psi*dipole_list[i][3*k+2];
+            }
+            u2 = ux*ux+uy*uy+uz*uz;
+            fprintf(output2,"%f\t",u2);
 
-            fprintf(output2,"%f\t",h1*h1+h2*h2);
-            fprintf(output3,"%f\t",l1*l1+l2*l2);
-            
+
         }
         fprintf(output2,"\n");
-        fprintf(output3,"\n");
     }
 
     fclose(output);
     fclose(output2);
-    fclose(output3);
 
 }
 
@@ -167,9 +174,9 @@ int main(int argc, char **argv) {
     energy_file_name = "CNN_output_optical_eng.csv";
     numEnergies = atoi(argv[1]);
     Osc_file_name = "TB_output_optical_osc.csv";
-    LUMO_file_name = "TB_transition_dipoles.csv";
+    Dipole_file_name = "Transition_dipoles.csv";
     numDihedrals = numEnergies-1;
-    
+    engFileWidth = min(numEnergies,5);
     int i,j;
     double fit;
     
