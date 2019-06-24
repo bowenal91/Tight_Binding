@@ -146,9 +146,9 @@ void print_comparison() {
             ux = 0.0; uy = 0.0; uz = 0.0;
             for (k=0;k<numEnergies;k++) {
                 psi = Eigenvectors(k,j);
-                ux += psi*psi*dipole_list[i][3*k];
-                uy += psi*psi*dipole_list[i][3*k+1];
-                uz += psi*psi*dipole_list[i][3*k+2];
+                ux += psi*dipole_list[i][3*k];
+                uy += psi*dipole_list[i][3*k+1];
+                uz += psi*dipole_list[i][3*k+2];
             }
             u2 = ux*ux+uy*uy+uz*uz;
             fprintf(output2,"%f\t",u2);
